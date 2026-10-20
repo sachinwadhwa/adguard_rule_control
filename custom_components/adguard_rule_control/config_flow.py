@@ -1081,25 +1081,22 @@ class OptionsFlowHandler(_OPTIONS_FLOW_BASE):
         return self._blocked_service_catalog
 
 
- async def _async_blocked_service_target_choices(self) -> dict[str, str]:
-    """Return mapped choices for client targets including the global option."""
-    choices = {TARGET_GLOBAL: "Everyone"}
-    
-    manager = self.hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id)
-    if manager is not None:
-        try:
-            # Correctly call the API client to fetch the discovered devices
-            discovered = await manager.client.async_get_clients()
-            for choice in discovered:
-                # Add discovered persistent AdGuard clients to the drop-down selection
-                if choice.get("identifier_type") == TARGET_CLIENT_NAME:
-                    client_val = choice["identifier_value"]
-                    choices[f"client:{client_val}"] = choice["display_name"]
-        except Exception:
-            # Fallback if connection drops during configuration
-            pass
-            
-    return choices
+    async def _async_blocked_service_target_choices(self) -> dict[str, str]:
+        """Return mapped choices for client targets including the global option."""
+        choices = {TARGET_GLOBAL: "Everyone"}
+        
+        manager = self.hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id)
+        if manager is not None:
+            try:
+                discovered = await manager.client.async_get_clients()
+                for choice in discovered:
+                    if choice.get("identifier_type") == TARGET_CLIENT_NAME:
+                        client_val = choice["identifier_value"]
+                        choices[f"client:{client_val}"] = choice["display_name"]
+            except Exception:
+                pass
+                
+        return choices
 
 
 def _control_choices(controls: list[dict[str, Any]]) -> dict[str, str]:

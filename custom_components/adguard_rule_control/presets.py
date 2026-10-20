@@ -185,8 +185,8 @@ def blocked_service_preset_ids(
     preset = presets. get( key)
     if preset is None:
         return ()
-    # Remove the 'if service_id in available_ids' filter to allow unlisted services to pass
-    return tuple(service_id for service_id in preset[1])
+    # Pass all preset keys forward directly
+    return tuple(service_id for service_id in preset)
 
 
 def blocked_service_preset_name(
