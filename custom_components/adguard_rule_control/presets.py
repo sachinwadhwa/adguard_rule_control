@@ -176,22 +176,17 @@ def blocked_service_preset_choices(
 
 def blocked_service_preset_ids(
     key: str,
-    available_ids: set[str],
-    presets: dict[str, tuple[str, tuple[str, ...]]],
-) -> tuple[str, ...]:
+    available_ids: set[ str],
+    presets: dict[ str, tuple[ str, tuple[ str, ...]]],
+) -> tuple[ str, ...]:
     """Return service IDs belonging to the selected group."""
     if key == BLOCKED_SERVICE_PRESET_ALL:
-        return tuple(sorted(available_ids))
-
-    preset = presets.get(key)
+        return tuple( sorted( available_ids))
+    preset = presets. get( key)
     if preset is None:
         return ()
-
-    return tuple(
-        service_id
-        for service_id in preset[1]
-        if service_id in available_ids
-    )
+    # Remove the 'if service_id in available_ids' filter to allow unlisted services to pass
+    return tuple(service_id for service_id in preset[1])
 
 
 def blocked_service_preset_name(

@@ -1081,36 +1081,25 @@ class OptionsFlowHandler(_OPTIONS_FLOW_BASE):
         return self._blocked_service_catalog
 
 
-    async def _async_blocked_service_target_choices(self) -> dict[str, str]:
-        if self._blocked_service_catalog is not None:
-            catalog_services = self._blocked_service_catalog.get(
-                "blocked_services", []
-            )
-            if isinstance(catalog_services, list):
-                services = {
-                    str(service["id"]): str(service["name"])
-                    for service in catalog_services
-                    if isinstance(service, dict)
-                    and service.get("id")
-                    and service.get("name")
-                }
-                if services:
-                    self._blocked_service_choices = services
-                    return services
-        """Return global and persistent-client targets for built-in services."""
-        choices = {TARGET_GLOBAL: "Everyone using this AdGuard Home instance"}
-        manager = self.hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id)
-        if manager is None:
-            return choices
+ async def _async_blocked_service_target_choices(self) -> dict[str, str]:
+    """Return mapped choices for client targets including the global option."""
+    choices = {TARGET_GLOBAL: "Everyone"}
+    
+    manager = self.hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id)
+    if manager is not None:
         try:
-            clients = await manager.client.async_get_client_configs()
-        except Exception:  # noqa: BLE001 - global service controls remain available
-            return choices
-        for client in clients:
-            name = str(client.get("name") or "").strip()
-            if name:
-                choices[f"client:{name}"] = f"Only {name}"
-        return choices
+            # Correctly call the API client to fetch the discovered devices
+            discovered = await manager.client.async_get_clients()
+            for choice in discovered:
+                # Add discovered persistent AdGuard clients to the drop-down selection
+                if choice.get("identifier_type") == TARGET_CLIENT_NAME:
+                    client_val = choice["identifier_value"]
+                    choices[f"client:{client_val}"] = choice["display_name"]
+        except Exception:
+            # Fallback if connection drops during configuration
+            pass
+            
+    return choices
 
 
 def _control_choices(controls: list[dict[str, Any]]) -> dict[str, str]:
