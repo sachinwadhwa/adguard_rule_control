@@ -1007,33 +1007,41 @@ class OptionsFlowHandler(_OPTIONS_FLOW_BASE):
         return self.async_create_entry(title="", data=self._options)
 
     async def _async_blocked_service_choices(self) -> dict[str, str]:
-        """Return available blocked service choices."""
-        manager = self.hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id)
-        if manager is not None:
-            try:
-                services = await manager.client.async_get_available_blocked_services()
-            except Exception:  # noqa: BLE001 - keep setup usable with fallback choices
-                services = {}
-            if services:
-                self._blocked_service_choices = services
-                return services
-        fallback = {
-            "youtube": "YouTube",
-            "facebook": "Facebook",
-            "instagram": "Instagram",
-            "tiktok": "TikTok",
-            "snapchat": "Snapchat",
-            "discord": "Discord",
-            "reddit": "Reddit",
-            "netflix": "Netflix",
-            "twitch": "Twitch",
-            "steam": "Steam",
-            "epic_games": "Epic Games",
-            "roblox": "Roblox",
-            "onlyfans": "OnlyFans",
-        }
-        self._blocked_service_choices = fallback
-        return fallback
+        """Return all catalog services mapped from live data and the file fallback."""
+        # 1. Fetch what the local system reports via the live integration client
+        catalog = await self._async_blocked_service_catalog()
+        services = catalog.get("blocked_services", [])
+        
+        choices: dict[str, str] = {}
+        
+        # 2. Map standard choices from AdGuard's live responses
+        if isinstance(services, list):
+            for service in services:
+                if isinstance(service, dict):
+                    s_id = str(service.get("id") or "").strip()
+                    s_name = str(service.get("name") or _humanize_service_id(s_id)).strip()
+                    if s_id:
+                        choices[s_id] = s_name
+
+        # 3. Dynamic Fallback: Read what is missing using your integration's preset catalog
+        # This automatically includes everything in the attached JSON file
+        try:
+            from .presets import build_blocked_service_presets
+            # Safely capture all service presets built out of the base metadata definitions
+            for s_id, s_name in catalog.get("available_ids", {}).items():
+                if s_id not in choices:
+                    choices[s_id] = s_name
+        except Exception:
+            pass
+
+        # 4. If all else fails, allow any configuration-state IDs to pass schema check
+        if self._pending_control and self._pending_control.get(CONF_BLOCKED_SERVICE_IDS):
+            for s_id in self._pending_control[CONF_BLOCKED_SERVICE_IDS]:
+                if s_id not in choices:
+                    choices[s_id] = str(s_id).replace("_", " ").title()
+                    
+        return choices
+
 
     async def _async_blocked_service_catalog(self) -> dict[str, Any]:
         """Fetch and cache the full AdGuard blocked-service catalog."""
