@@ -176,17 +176,25 @@ def blocked_service_preset_choices(
 
 def blocked_service_preset_ids(
     key: str,
-    available_ids: set[ str],
-    presets: dict[ str, tuple[ str, tuple[ str, ...]]],
-) -> tuple[ str, ...]:
-    """Return service IDs belonging to the selected group."""
+    available_ids: set[str],
+    presets: dict[str, tuple[str, tuple[str, ...]]],
+) -> tuple[str, ...]:
+    """Return valid service IDs belonging to the selected group."""
     if key == BLOCKED_SERVICE_PRESET_ALL:
-        return tuple( sorted( available_ids))
-    preset = presets. get( key)
+        return tuple(sorted(available_ids))
+
+    preset = presets.get(key)
     if preset is None:
         return ()
-    # Pass all preset keys forward directly
-    return tuple(service_id for service_id in preset)
+
+    # The preset is (group_name, service_ids).
+    # Return only IDs that are actually available from AdGuard.
+    _group_name, service_ids = preset
+    return tuple(
+        service_id
+        for service_id in service_ids
+        if service_id in available_ids
+    )
 
 
 def blocked_service_preset_name(
